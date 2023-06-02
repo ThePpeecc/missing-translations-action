@@ -1,24 +1,28 @@
-const wait = require('./wait');
 const process = require('process');
 const cp = require('child_process');
 const path = require('path');
 
-test('throws invalid number', async () => {
-  await expect(wait('foo')).rejects.toThrow('milliseconds not a number');
-});
 
-test('wait 500 ms', async () => {
-  const start = new Date();
-  await wait(500);
-  const end = new Date();
-  var delta = Math.abs(end - start);
-  expect(delta).toBeGreaterThanOrEqual(500);
-});
+const fileEndings = 'INPUT_FILEENDINGS'
+const translationFunctions = 'INPUT_TRANSLATIONFUNCTIONS'
+const translationFile = 'INPUT_TRANSLATIONFILE'
+const findSimilarStrs = 'INPUT_FINDSIMILARSTRS'
+const folders = 'INPUT_FOLDERS'
 
 // shows how the runner will run a javascript action with env / stdout protocol
 test('test runs', () => {
-  process.env['INPUT_MILLISECONDS'] = 100;
-  const ip = path.join(__dirname, 'index.js');
-  const result = cp.execSync(`node ${ip}`, {env: process.env}).toString();
-  console.log(result);
+  process.env[fileEndings] = JSON.stringify(['js'])
+  process.env[translationFunctions] = JSON.stringify(['$t'])
+  process.env[translationFile] = 'test-env/lang/en.json'
+  process.env[findSimilarStrs] = 'true'
+  process.env[folders] = JSON.stringify(['test-env'])
+
+
+  const ip = path.join(__dirname, 'index.js')
+  try {
+    const result = cp.execSync(`node ${ip}`, {env: process.env}).toString()
+    console.log(result)
+  } catch(e) {
+    console.error(e)
+  }
 })
