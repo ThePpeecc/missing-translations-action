@@ -1,18 +1,29 @@
-const core = require('@actions/core');
-const wait = require('./wait');
+const core = require('@actions/core')
+const missingTranslationsAction = require('./missing-translations')
 
 
-// most @actions toolkit packages have async methods
 async function run() {
-  try {
-    const ms = core.getInput('milliseconds');
-    core.info(`Waiting ${ms} milliseconds ...`);
+  try {    
+    const { missingTranslations, uniqueTranslations, unusedTranslations, translations } = await missingTranslationsAction({
+      fileEndings: JSON.parse(core.getInput('fileEndings')),
+      folders: JSON.parse(core.getInput('folders')),
+      translationFunctions: JSON.parse(core.getInput('translationFunctions')),
+      hyphen: core.getInput('hyphen') !== '' ? JSON.parse(core.getInput('hyphen')) : '',
+      translationFile: core.getInput('translationFile'),
+      findSimilarStrs: core.getInput('findSimilarStrs') === 'true',
+      similarDist: parseInt(core.getInput('similarDist')),
+      createIgnore: core.getInput('createIgnore') === 'true',
+    })
 
-    core.debug((new Date()).toTimeString()); // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
-    await wait(parseInt(ms));
-    core.info((new Date()).toTimeString());
 
-    core.setOutput('time', new Date().toTimeString());
+    if (missingTranslations.length > 0) {
+      core.setFailed('Found some translations missing')      
+    }
+
+    core.setOutput('missingTranslations', missingTranslations)
+    core.setOutput('uniqueTranslations', uniqueTranslations)
+    core.setOutput('unusedTranslations', unusedTranslations)
+    core.setOutput('translations', translations)
   } catch (error) {
     core.setFailed(error.message);
   }
