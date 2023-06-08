@@ -11,11 +11,17 @@ const folders = 'INPUT_FOLDERS'
 
 // shows how the runner will run a javascript action with env / stdout protocol
 test('test runs', () => {
-  process.env[fileEndings] = JSON.stringify(['js'])
-  process.env[translationFunctions] = JSON.stringify(['$t'])
+  process.env[fileEndings] = `
+    js
+  `
+  process.env[translationFunctions] = `
+    $t
+  `
   process.env[translationFile] = 'test-env/lang/en.json'
   process.env[findSimilarStrs] = 'true'
-  process.env[folders] = JSON.stringify(['test-env'])
+  process.env[folders] = `
+    test-env
+  `
 
 
   const ip = path.join(__dirname, 'index.js')

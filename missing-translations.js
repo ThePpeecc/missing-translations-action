@@ -1,7 +1,7 @@
 const path = require("path")
 const fs   = require("fs")
 const fsPromises = fs.promises
-const Lsh = require('@agtabesh/lsh')
+const { Minhash, LshIndex } = require('minhash')
 const levenshteinDistance = require('./levensteinDistance.js')
 const core = require('@actions/core')
 
@@ -143,38 +143,36 @@ async function main(env) {
     const missingTranslations = uniqueTranslations.filter(key => translationJSON[key] === undefined || translationJSON[key] === '')
     const unusedTranslations = jsonArr.filter(key => translations[key] === undefined)
 
-    const shingleSize = 6
 
-    const config = {
-        storage: 'memory',
-        shingleSize,
-        numberOfHashFunctions: 120
+    function createHashInstance(doc) {
+      const m = new Minhash()
+      doc.split(' ').map(w => m.update(w))
+      return m
     }
 
-    const lsh = Lsh.getInstance(config)
+    const lsh = new  LshIndex()
 
     if (findSimilarStrs) {
         for (const [i, doc] of jsonArr.entries()) {
             try {
-                lsh.addDocument(i, doc.padStart(Math.max(shingleSize-doc.length+5, 0), ' '))
+                lsh.insert(i, createHashInstance(doc))
             } catch (e) {
                 log(doc)
             }
         }
     }
 
-
     for (const trans of missingTranslations) {
 
         let similar = []
-
         if (findSimilarStrs) {
-            const q = {
-                text: trans.padStart(Math.max(shingleSize-trans.length+5, 0), ' '),
-            }
-            const result = lsh.query(q)
+
+            const h = createHashInstance(trans)
+            lsh.insert(trans, h)
+            const result = lsh.query(h)
 
             similar = result.map(i => jsonArr[i])
+                .filter(str => !!str)
                 .filter(k => !(k.length >= trans.length + similarDist && k.length <= trans.length - similarDist))
                 .map(k => [levenshteinDistance(k, trans), k])
                 .filter(v => v[0] <= similarDist)

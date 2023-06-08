@@ -4,7 +4,10 @@ inputs:
   fileEndings: 
       description: 'Which file types to search for use of translation functions in.'
       required: true
-      default: ['js', 'ts', 'vue']
+      default: |
+        js
+        ts
+        vue
   translationFile:
       description: 'Path to json file with key - value for translations'
       required: true
@@ -12,13 +15,20 @@ inputs:
   translationFunctions:
       description: 'The identifier name of the translation functions used'
       required: true
-      default: ['$t', '$tc', '@lang', '__']
+      default: |
+        $t
+        $tc
+        @lang
+        __
   folders:
       description: 'Path to folders, to search for missing translations in'
-      default: ['./src/']
+      default: |
+        ./src/ 
   hyphen:
       description: 'What hyphens are used to identify a string'
-      default: ['"', "'"]
+      default: |
+        "
+        '
   findSimilarStrs:
       description: 'Try to search for similar keys to missing translations. Practical to find small spelling mistakes. Can be quite slow if there is a large translation file.'
       default: false

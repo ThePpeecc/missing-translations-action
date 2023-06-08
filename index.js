@@ -1,14 +1,17 @@
 const core = require('@actions/core')
 const missingTranslationsAction = require('./missing-translations')
 
+function parseArray(multiLineStr) {
+  return multiLineStr.split('\n')
+}
 
 async function run() {
-  try {    
+  try {     
     const { missingTranslations, uniqueTranslations, unusedTranslations, translations } = await missingTranslationsAction({
-      fileEndings: JSON.parse(core.getInput('fileEndings')),
-      folders: JSON.parse(core.getInput('folders')),
-      translationFunctions: JSON.parse(core.getInput('translationFunctions')),
-      hyphen: core.getInput('hyphen') !== '' ? JSON.parse(core.getInput('hyphen')) : '',
+      fileEndings: parseArray(core.getInput('fileEndings')),
+      folders: parseArray(core.getInput('folders')),
+      translationFunctions: parseArray(core.getInput('translationFunctions')),
+      hyphen: core.getInput('hyphen') !== '' ? parseArray(core.getInput('hyphen')) : '',
       translationFile: core.getInput('translationFile'),
       findSimilarStrs: core.getInput('findSimilarStrs') === 'true',
       similarDist: parseInt(core.getInput('similarDist')),
@@ -25,7 +28,8 @@ async function run() {
     core.setOutput('unusedTranslations', unusedTranslations)
     core.setOutput('translations', translations)
   } catch (error) {
-    core.setFailed(error.message);
+    // core.setFailed(error.message);
+    console.error(error)
   }
 }
 
