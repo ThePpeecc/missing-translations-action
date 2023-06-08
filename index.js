@@ -6,8 +6,7 @@ function parseArray(multiLineStr) {
 }
 
 async function run() {
-  try {    
-
+  try {     
     const { missingTranslations, uniqueTranslations, unusedTranslations, translations } = await missingTranslationsAction({
       fileEndings: parseArray(core.getInput('fileEndings')),
       folders: parseArray(core.getInput('folders')),
@@ -29,7 +28,8 @@ async function run() {
     core.setOutput('unusedTranslations', unusedTranslations)
     core.setOutput('translations', translations)
   } catch (error) {
-    core.setFailed(error.message);
+    // core.setFailed(error.message);
+    console.error(error)
   }
 }
 
