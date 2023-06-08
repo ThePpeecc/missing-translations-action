@@ -29736,14 +29736,18 @@ var __webpack_exports__ = {};
 const core = __nccwpck_require__(2186)
 const missingTranslationsAction = __nccwpck_require__(8253)
 
+function parseArray(multiLineStr) {
+  return multiLineStr.split('\n')
+}
 
 async function run() {
   try {    
+
     const { missingTranslations, uniqueTranslations, unusedTranslations, translations } = await missingTranslationsAction({
-      fileEndings: JSON.parse(core.getInput('fileEndings')),
-      folders: JSON.parse(core.getInput('folders')),
-      translationFunctions: JSON.parse(core.getInput('translationFunctions')),
-      hyphen: core.getInput('hyphen') !== '' ? JSON.parse(core.getInput('hyphen')) : '',
+      fileEndings: parseArray(core.getInput('fileEndings')),
+      folders: parseArray(core.getInput('folders')),
+      translationFunctions: parseArray(core.getInput('translationFunctions')),
+      hyphen: core.getInput('hyphen') !== '' ? parseArray(core.getInput('hyphen')) : '',
       translationFile: core.getInput('translationFile'),
       findSimilarStrs: core.getInput('findSimilarStrs') === 'true',
       similarDist: parseInt(core.getInput('similarDist')),
