@@ -20,6 +20,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: ./
+    - uses: main
       with:
-        milliseconds: 1000
+        hyphen: ["'", '"', '`']
+        fileEndings: ['js']
+        translationFile: 'test-env/lang/en.json'
+        translationFunctions: ['$t']
+        folders: ['test-env']
+        findSimilarStrs: true
