@@ -188,7 +188,7 @@ async function main(env) {
         const msg = `
 ${baseTabs}${FgRed}Missing translation for:${Reset}${FgMagenta} "${trans}"${Reset} ${emptyStrMsg}${similarStr} 
 ${baseTabs}\t${FgYellow}Found in: 
-${baseTabs}\t\t${translations[trans].reduce((acc, loc) => `${acc}${loc.file}:${loc.lineStart}:${loc.columnStart}\n        `,'')}
+${baseTabs}\t\t${translations[trans].reduce((acc, loc) => `${acc}${loc.file}:${loc.lineStart}:${loc.columnStart}\n${baseTabs}\t\t`,'')}
 ${Reset}`
         core.info(msg)
         for (const t of translations[trans]) {

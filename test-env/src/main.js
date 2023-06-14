@@ -23,5 +23,10 @@ function main() {
     console.log($t(`
         multiline translation here
     `))
+
+    if(someCondition) {
+        $t('Ups, I misspelled this key')
+    }
+
     return $t('A simple translation needed here')
 }
