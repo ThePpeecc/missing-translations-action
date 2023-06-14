@@ -1,266 +1,6 @@
 require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 270:
-/***/ ((module) => {
-
-const levenshteinDistance = (str1 = '', str2 = '') => {
-    const track = Array(str2.length + 1).fill(null).map(() =>
-      Array(str1.length + 1).fill(null));
-    for (let i = 0; i <= str1.length; i += 1) {
-      track[0][i] = i;
-    }
-    for (let j = 0; j <= str2.length; j += 1) {
-      track[j][0] = j;
-    }
-    for (let j = 1; j <= str2.length; j += 1) {
-      for (let i = 1; i <= str1.length; i += 1) {
-        const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
-        track[j][i] = Math.min(
-          track[j][i - 1] + 1, // deletion
-          track[j - 1][i] + 1, // insertion
-          track[j - 1][i - 1] + indicator, // substitution
-        );
-      }
-    }
-    return track[str2.length][str1.length];
-  };
-
-  module.exports = levenshteinDistance
-
-/***/ }),
-
-/***/ 253:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const path = __nccwpck_require__(17)
-const fs   = __nccwpck_require__(147)
-const fsPromises = fs.promises
-const { Minhash, LshIndex } = __nccwpck_require__(480)
-const levenshteinDistance = __nccwpck_require__(270)
-const core = __nccwpck_require__(186)
-
-
-// Console colors used
-const Reset = "\x1b[0m"
-const FgRed = "\x1b[31m"
-const FgGreen = "\x1b[32m"
-const FgYellow = "\x1b[33m"
-const FgMagenta = "\x1b[35m"
-
-// How far in are we tabbing our output
-const baseTabs = '\t'
-
-
-
-function log() {
-    if (core.info) {
-        core.info(...arguments)
-    } else {
-        console.log(...arguments)
-    }
-}
-
-function createIgnoreFile(ignoreTrans, ignoreTranslationFile) {
-  try {
-    fs.writeFileSync(ignoreTranslationFile, JSON.stringify(ignoreTrans))
-  } catch (err) {
-    core.debug(err)
-  }
-}
-
-function loadIgnoreFile(ignoreTranslationFile) {
-  try {
-    return JSON.parse(fs.readFileSync(ignoreTranslationFile, 'utf-8'))
-  } catch (_) {
-    return false // We probably don't have an ignorefile
-  }
-}
-
-function getAllFiles(fileEndings, folders) {
-  let files  = []
-  for (const directory of folders) {
-    fs.readdirSync(directory).forEach(file => {
-      const absolute = path.join(directory, file)
-      if (fs.statSync(absolute).isDirectory()) {
-        files = files.concat(getAllFiles(fileEndings, [absolute]))
-      } else if (fileEndings.some(end => file.endsWith(`.${end}`))) {
-        files.push(absolute)
-      }
-    })
-  }
-
-  return files
-}
-
-async function findAllTranslations(files, translationRegex, ignoreTranslationFile) {
-  const translations = {}
-  const ignoreFile = loadIgnoreFile(ignoreTranslationFile)
-
-  for (const file of files) {
-    const data = await fsPromises.readFile(file, "utf8")
-
-    translationRegex.forEach(regex => {
-
-      for (const match of data.toString().matchAll(regex)) {
-        const key = match?.groups?.translation.replace('\\', '')
-
-        if (ignoreFile?.[`${file}:${match.index}`]) continue
-
-
-        
-        const lineIndexes = match.indices[0]
-        const columnIndexes = match.indices[1]
-
-        const lineStart = match.input.substr(0, lineIndexes[0]).split('\n').length
-        const lineEnd = match.input.substr(0, lineIndexes[1]).split('\n').length
-        
-        const columnStart = match.input.substr(0, columnIndexes[0]).split('\n').pop().length
-        const columnEnd = match.input.substr(0, columnIndexes[1]).split('\n').pop().length
-        
-        const location = {
-          file,
-          index: match.index,
-          area: match.input.slice(Math.max(match.index-100, 0), Math.min(match.index+key.length+100, match.input.length)),
-          lineStart,
-          lineEnd,
-          columnStart,
-          columnEnd
-        }
-
-        if (translations[key]) {
-          translations[key].push(location)
-        } else {
-          translations[key] = [location]
-        }
-      }
-
-
-    })
-  }
-
-  return translations
-}
-
-
-async function main(env) {
-    const fileEndings = env.fileEndings || ['js', 'ts', 'vue', 'php']
-    const folders = env.folders || []
-    const translationFunctions = env.translationFunctions || ['$t', '$tc', '@lang', '__']
-    const hyphen = env.hyphen || ['"', "'", '`']
-
-    const translationFile = env.translationFile || 'lang/en.json'
-
-    const findSimilarStrs = env.findSimilarStrs // Quite slow if set to true
-    const similarDist = env.similarDist || 1
-
-    const createRegex = (acc, hyph) => 
-        acc.concat(
-            translationFunctions.map(str => 
-                new RegExp(`${str.replace('$', '\\$')}\\(\\n?\\s*[${hyph}](?<translation>([^${hyph}])+)[${hyph}]([,.\\n\\s]+)?[\\)\\{\\[]`, 'dg')
-                )
-            )
-
-    const translationRegex = hyphen.reduce(createRegex, [])
-
-
-    const ignoreTranslationFile = './.ignoretrans'
-
-
-    const files = getAllFiles(fileEndings, folders)
-    const translations = await findAllTranslations(files, translationRegex, ignoreTranslationFile)
-    const uniqueTranslations = Object.keys(translations)
-
-    const translationsJSONRaw = await fsPromises.readFile(translationFile)
-    const translationJSON = JSON.parse(translationsJSONRaw.toString())
-    const jsonArr = Object.keys(translationJSON)
-
-    const missingTranslations = uniqueTranslations.filter(key => translationJSON[key] === undefined || translationJSON[key] === '')
-    const unusedTranslations = jsonArr.filter(key => translations[key] === undefined)
-
-
-    function createHashInstance(doc) {
-      const m = new Minhash()
-      doc.split(' ').map(w => m.update(w))
-      return m
-    }
-
-    const lsh = new  LshIndex()
-
-    if (findSimilarStrs) {
-        for (const [i, doc] of jsonArr.entries()) {
-            try {
-                lsh.insert(i, createHashInstance(doc))
-            } catch (e) {
-                log(doc)
-            }
-        }
-    }
-
-    for (const trans of missingTranslations) {
-
-        let similar = []
-        if (findSimilarStrs) {
-
-            const h = createHashInstance(trans)
-            lsh.insert(trans, h)
-            const result = lsh.query(h)
-
-            similar = result.map(i => jsonArr[i])
-                .filter(str => !!str)
-                .filter(k => !(k.length >= trans.length + similarDist && k.length <= trans.length - similarDist))
-                .map(k => [levenshteinDistance(k, trans), k])
-                .filter(v => v[0] <= similarDist)
-                .map(v => v[1])
-        }
-        
-
-        const similarStr = similar.length > 0 && similar[0] !== trans ? `\n${baseTabs}\t${FgGreen}Similar to: ${similar[0]}${Reset}` : ''
-
-
-        const emptyStrMsg = translationJSON[trans] === '' ? `\n${baseTabs}\t${FgYellow}This key does exist in ${translationFile} but there is no translation given.\n${baseTabs}\tConsider adding a translation for this key.${Reset}` : ''
-
-        const msg = `
-${baseTabs}${FgRed}Missing translation for:${Reset}${FgMagenta} "${trans}"${Reset} ${emptyStrMsg}${similarStr} 
-${baseTabs}\t${FgYellow}Found in: 
-${baseTabs}\t\t${translations[trans].reduce((acc, loc) => `${acc}${loc.file}:${loc.lineStart}:${loc.columnStart}\n        `,'')}
-${Reset}`
-        core.info(msg)
-        for (const t of translations[trans]) {
-          core.error('', {
-            title: `Missing translation for: "${trans}"`,
-            file: t.file,
-            startLine: t.lineStart,
-            endLine: t.lineEnd,
-            startColumn: t.columnStart,
-            endColumn: t.columnEnd
-          })
-        }
-    }
-
-
-    log(
-        `${baseTabs}${FgGreen}Total number of missing translations: ${missingTranslations.length} out of found translations: ${uniqueTranslations.length}${Reset}`
-    )
-    log(
-        `${baseTabs}${FgGreen}Total number of unused translations: ${unusedTranslations.length} out of total translations: ${jsonArr.length}${Reset}`
-    )
-
-
-    if (env.createIgnore) {
-      log('Creating and saving ignore file')
-      const ignoreKey = locs => locs.reduce((acc, trans) => ({...acc, [`${trans.file}:${trans.index}`]: true}), {})
-      createIgnoreFile(missingTranslations.reduce((acc, key) => ({...acc, ...ignoreKey(translations[key])}), {}), ignoreTranslationFile) 
-    }
-
-    return { missingTranslations, uniqueTranslations, unusedTranslations, translations: jsonArr }
-}
-
-module.exports = main
-
-
-/***/ }),
-
 /***/ 351:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -3134,6 +2874,407 @@ exports["default"] = _default;
 
 /***/ }),
 
+/***/ 416:
+/***/ ((module) => {
+
+// Console colors used
+module.exports.Reset = '\x1b[0m'
+module.exports.FgRed = '\x1b[31m'
+module.exports.FgGreen = '\x1b[32m'
+module.exports.FgYellow = '\x1b[33m'
+module.exports.FgMagenta = '\x1b[35m'
+
+// How far in are we tabbing our output
+module.exports.baseTabs = '\t'
+
+
+/***/ }),
+
+/***/ 225:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const path = __nccwpck_require__(17)
+const fs = __nccwpck_require__(147)
+const fsPromises = fs.promises
+const { Minhash, LshIndex } = __nccwpck_require__(480)
+const levenshteinDistance = __nccwpck_require__(656)
+const core = __nccwpck_require__(186)
+const {
+  Reset,
+  FgRed,
+  FgGreen,
+  FgYellow,
+  FgMagenta,
+  baseTabs,
+} = __nccwpck_require__(416)
+
+let log = () => console.log(...arguments)
+
+function createIgnoreFile(ignoreTrans, ignoreTranslationFile) {
+  try {
+    fs.writeFileSync(
+      ignoreTranslationFile,
+      JSON.stringify(ignoreTrans)
+    )
+  } catch (err) {
+    core.debug(err)
+  }
+}
+
+module.exports.createIgnoreFile = function (
+  env,
+  missingTranslations
+) {
+  if (env.createIgnore) {
+    log('Creating and saving ignore file')
+    const ignoreKey = (locs) =>
+      locs.reduce(
+        (acc, trans) => ({
+          ...acc,
+          [`${trans.file}:${trans.index}`]: true,
+        }),
+        {}
+      )
+    createIgnoreFile(
+      missingTranslations.reduce(
+        (acc, key) => ({ ...acc, ...ignoreKey(translations[key]) }),
+        {}
+      ),
+      env.ignoreTranslationFile
+    )
+  }
+}
+
+function loadIgnoreFile(ignoreTranslationFile) {
+  try {
+    return JSON.parse(fs.readFileSync(ignoreTranslationFile, 'utf-8'))
+  } catch (_) {
+    return false // We probably don't have an ignorefile
+  }
+}
+
+function getAllFiles(fileEndings, folders) {
+  let files = []
+  for (const directory of folders) {
+    fs.readdirSync(directory).forEach((file) => {
+      const absolute = path.join(directory, file)
+      if (fs.statSync(absolute).isDirectory()) {
+        files = files.concat(getAllFiles(fileEndings, [absolute]))
+      } else if (
+        fileEndings.some((end) => file.endsWith(`.${end}`))
+      ) {
+        files.push(absolute)
+      }
+    })
+  }
+
+  return files
+}
+
+function* findTranslations(data, regex, fileName, ignoreFile) {
+  for (const match of data.toString().matchAll(regex)) {
+    const key = match?.groups?.translation
+
+    // Could be improved by checking locality as well as index
+    if (ignoreFile?.[`${fileName}:${match.index}`]) continue
+
+    const lineIndexes = match.indices[0]
+    const columnIndexes = match.indices[1]
+
+    const lineStart = match.input
+      .substr(0, lineIndexes[0])
+      .split('\n').length
+    const lineEnd = match.input
+      .substr(0, lineIndexes[1])
+      .split('\n').length
+
+    const columnStart = match.input
+      .substr(0, columnIndexes[0])
+      .split('\n')
+      .pop().length
+    const columnEnd = match.input
+      .substr(0, columnIndexes[1])
+      .split('\n')
+      .pop().length
+
+    const location = {
+      file: fileName,
+      index: match.index,
+      area: match.input.slice(
+        Math.max(match.index - 100, 0),
+        Math.min(match.index + key.length + 100, match.input.length)
+      ),
+      lineStart,
+      lineEnd,
+      columnStart,
+      columnEnd,
+    }
+
+    yield { location, key }
+  }
+}
+
+async function findAllTranslations(
+  files,
+  regexes,
+  ignoreTranslationFile
+) {
+  const translations = {}
+  const ignoreFile = loadIgnoreFile(ignoreTranslationFile)
+
+  for (const file of files) {
+    const data = await fsPromises.readFile(file, 'utf8')
+
+    regexes.forEach((regex) => {
+      for (const { location, key } of findTranslations(
+        data,
+        regex,
+        file,
+        ignoreFile
+      )) {
+        if (translations[key]) {
+          translations[key].push(location)
+        } else {
+          translations[key] = [location]
+        }
+      }
+    })
+  }
+
+  return translations
+}
+
+function loadEnvData(env) {
+  const fileEndings = env.fileEndings || ['js', 'ts', 'vue', 'php']
+  const folders = env.folders || []
+  const translationFunctions = env.translationFunctions || [
+    '$t',
+    '$tc',
+    '@lang',
+    '__',
+  ]
+  const hyphen = env.hyphen || ['"', "'", '`']
+
+  const translationFile = env.translationFile || 'lang/en.json'
+
+  const findSimilarStrs = env.findSimilarStrs // Quite slow if set to true
+  const similarDist = env.similarDist || 1
+
+  const ignoreTranslationFile = './.ignoretrans'
+
+  return {
+    fileEndings,
+    folders,
+    translationFunctions,
+    hyphen,
+    translationFile,
+    findSimilarStrs,
+    similarDist,
+    ignoreTranslationFile,
+    createIgnore: !!env.createIgnore,
+  }
+}
+
+async function loadTranslationFile(translationFile) {
+  const raw = await fsPromises.readFile(translationFile)
+  const json = JSON.parse(raw.toString())
+  const keys = Object.keys(json)
+
+  return { raw, json, keys }
+}
+
+function createHashInstance(doc) {
+  const m = new Minhash()
+  doc.split(' ').map((w) => m.update(w))
+  return m
+}
+
+function buildLocalitySearch(keys) {
+  const lsh = new LshIndex()
+
+  for (const [i, doc] of keys.entries()) {
+    try {
+      lsh.insert(i, createHashInstance(doc))
+    } catch (e) {
+      log(doc)
+    }
+  }
+
+  return lsh
+}
+
+function* createLogs(
+  {
+    missingTranslations,
+    translationKeys,
+    translationJSON,
+    translations,
+  },
+  env
+) {
+  const { translationFile, findSimilarStrs, similarDist } =
+    loadEnvData(env)
+
+  let lsh
+  for (const trans of missingTranslations) {
+    let similar = []
+    if (findSimilarStrs) {
+      if (!lsh) lsh = buildLocalitySearch(translationKeys)
+
+      const h = createHashInstance(trans)
+      lsh.insert(trans, h)
+      const result = lsh.query(h)
+
+      similar = result
+        .map((i) => translationKeys[i])
+        .filter((str) => !!str)
+        .filter(
+          (k) =>
+            !(
+              k.length >= trans.length + similarDist &&
+              k.length <= trans.length - similarDist
+            )
+        )
+        .map((k) => [levenshteinDistance(k, trans), k])
+        .filter((v) => v[0] <= similarDist)
+        .map((v) => v[1])
+    }
+
+    const similarStr =
+      similar.length > 0 && similar[0] !== trans
+        ? `\n${baseTabs}\t${FgGreen}Similar to: ${similar[0]}${Reset}`
+        : ''
+
+    const emptyStrMsg =
+      translationJSON[trans] === ''
+        ? `\n${baseTabs}\t${FgYellow}This key does exist in ${translationFile} but there is no translation given.\n${baseTabs}\tConsider adding a translation for this key.${Reset}`
+        : ''
+
+    const msg = `
+${baseTabs}${FgRed}Missing translation for:${Reset}${FgMagenta} "${trans}"${Reset} ${emptyStrMsg}${similarStr} 
+${baseTabs}\t${FgYellow}Found in: 
+${baseTabs}\t\t${translations[trans].reduce(
+      (acc, loc) =>
+        `${acc}${loc.file}:${loc.lineStart}:${loc.columnStart}\n${baseTabs}\t\t`,
+      ''
+    )}
+${Reset}`
+
+    yield {
+      msg,
+      translation: trans,
+      similarStrings: similarStr,
+    }
+  }
+}
+
+function createRegexes(env) {
+  const { translationFunctions, hyphen } = loadEnvData(env)
+
+  const reducer = (acc, hyph) =>
+    acc.concat(
+      translationFunctions.map(
+        (str) =>
+          new RegExp(
+            `${str.replaceAll(
+              '$',
+              '\\$'
+            )}\\(\\n?\\s*[${hyph}](?<translation>([^${hyph}])+)[${hyph}]([,.\\n\\s]+)?[\\)\\{\\[]`,
+            'dg'
+          )
+      )
+    )
+
+  return hyphen.reduce(reducer, [])
+}
+
+module.exports.createTranslationsOverview = async function (
+  env,
+  logFunc
+) {
+  if (!!logFunc) log = logFunc // Set the logging function, default is just console.log
+  const {
+    fileEndings,
+    folders,
+    translationFile,
+    ignoreTranslationFile,
+  } = loadEnvData(env)
+
+  const regexes = createRegexes(env)
+
+  const files = getAllFiles(fileEndings, folders)
+  const translations = await findAllTranslations(
+    files,
+    regexes,
+    ignoreTranslationFile
+  )
+  const uniqueTranslations = Object.keys(translations)
+
+  const { keys: translationKeys, json: translationJSON } =
+    await loadTranslationFile(translationFile)
+
+  const missingTranslations = uniqueTranslations.filter(
+    (key) =>
+      translationJSON[key] === undefined ||
+      translationJSON[key] === ''
+  )
+
+  const unusedTranslations = translationKeys.filter(
+    (key) => translations[key] === undefined
+  )
+
+  const logList = createLogs(
+    {
+      missingTranslations,
+      translationJSON,
+      translationKeys,
+      translations,
+    },
+    env
+  )
+
+  return {
+    logList,
+    missingTranslations,
+    uniqueTranslations,
+    unusedTranslations,
+    translations,
+    translationKeys,
+  }
+}
+
+
+/***/ }),
+
+/***/ 656:
+/***/ ((module) => {
+
+const levenshteinDistance = (str1 = '', str2 = '') => {
+    const track = Array(str2.length + 1).fill(null).map(() =>
+      Array(str1.length + 1).fill(null));
+    for (let i = 0; i <= str1.length; i += 1) {
+      track[0][i] = i;
+    }
+    for (let j = 0; j <= str2.length; j += 1) {
+      track[j][0] = j;
+    }
+    for (let j = 1; j <= str2.length; j += 1) {
+      for (let i = 1; i <= str1.length; i += 1) {
+        const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        track[j][i] = Math.min(
+          track[j][i - 1] + 1, // deletion
+          track[j - 1][i] + 1, // insertion
+          track[j - 1][i - 1] + indicator, // substitution
+        );
+      }
+    }
+    return track[str2.length][str1.length];
+  };
+
+  module.exports = levenshteinDistance
+
+/***/ }),
+
 /***/ 491:
 /***/ ((module) => {
 
@@ -3264,41 +3405,79 @@ var __webpack_exports__ = {};
 // This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
 (() => {
 const core = __nccwpck_require__(186)
-const missingTranslationsAction = __nccwpck_require__(253)
+const {
+  createTranslationsOverview,
+} = __nccwpck_require__(225)
+const { Reset, FgGreen, baseTabs } = __nccwpck_require__(416)
 
 function parseArray(multiLineStr) {
   return multiLineStr.split('\n')
 }
 
 async function run() {
-  try {     
-    const { missingTranslations, uniqueTranslations, unusedTranslations, translations } = await missingTranslationsAction({
-      fileEndings: parseArray(core.getInput('fileEndings')),
-      folders: parseArray(core.getInput('folders')),
-      translationFunctions: parseArray(core.getInput('translationFunctions')),
-      hyphen: core.getInput('hyphen') !== '' ? parseArray(core.getInput('hyphen')) : '',
-      translationFile: core.getInput('translationFile'),
-      findSimilarStrs: core.getInput('findSimilarStrs') === 'true',
-      similarDist: parseInt(core.getInput('similarDist')),
-      createIgnore: core.getInput('createIgnore') === 'true',
-    })
+  try {
+    const {
+      logList,
+      missingTranslations,
+      uniqueTranslations,
+      unusedTranslations,
+      translations,
+      translationKeys,
+    } = await createTranslationsOverview(
+      {
+        fileEndings: parseArray(core.getInput('fileEndings')),
+        folders: parseArray(core.getInput('folders')),
+        translationFunctions: parseArray(
+          core.getInput('translationFunctions')
+        ),
+        hyphen:
+          core.getInput('hyphen') !== ''
+            ? parseArray(core.getInput('hyphen'))
+            : null,
+        translationFile: core.getInput('translationFile'),
+        findSimilarStrs: core.getInput('findSimilarStrs') === 'true',
+        similarDist: parseInt(core.getInput('similarDist')),
+        createIgnore: core.getInput('createIgnore') === 'true',
+      },
+      core.info // Sets the log function
+    )
 
+    for (const { msg, translation } of logList) {
+      core.info(msg)
+      for (const t of translations[translation]) {
+        core.error('', {
+          title: `Missing translation for: "${translation}"`,
+          file: t.file,
+          startLine: t.lineStart,
+          endLine: t.lineEnd,
+          startColumn: t.columnStart,
+          endColumn: t.columnEnd,
+        })
+      }
+    }
+
+    core.info(
+      `${baseTabs}${FgGreen}Total number of missing translations: ${missingTranslations.length} out of found translations: ${uniqueTranslations.length}${Reset}`
+    )
+    core.info(
+      `${baseTabs}${FgGreen}Total number of unused translations: ${unusedTranslations.length} out of total translations: ${translationKeys.length}${Reset}`
+    )
 
     if (missingTranslations.length > 0) {
-      core.setFailed('Found some translations missing')      
+      core.setFailed('Found some translations missing')
     }
 
     core.setOutput('missingTranslations', missingTranslations)
     core.setOutput('uniqueTranslations', uniqueTranslations)
     core.setOutput('unusedTranslations', unusedTranslations)
+    core.setOutput('translationKeys', translationKeys)
     core.setOutput('translations', translations)
   } catch (error) {
-    // core.setFailed(error.message);
-    console.error(error)
+    core.setFailed(error)
   }
 }
 
-run();
+run()
 
 })();
 
