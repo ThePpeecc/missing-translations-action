@@ -2,6 +2,7 @@ const core = require('@actions/core')
 const {
   createTranslationsOverview,
 } = require('./src/createTranslationsOverview')
+const { Reset, FgGreen, baseTabs } = require('./src/consoleConsts')
 
 function parseArray(multiLineStr) {
   return multiLineStr.split('\n')
@@ -56,9 +57,9 @@ async function run() {
       `${baseTabs}${FgGreen}Total number of unused translations: ${unusedTranslations.length} out of total translations: ${translationKeys.length}${Reset}`
     )
 
-    // if (missingTranslations.length > 0) {
-    //   core.setFailed('Found some translations missing')
-    // }
+    if (missingTranslations.length > 0) {
+      core.setFailed('Found some translations missing')
+    }
 
     core.setOutput('missingTranslations', missingTranslations)
     core.setOutput('uniqueTranslations', uniqueTranslations)
@@ -66,8 +67,7 @@ async function run() {
     core.setOutput('translationKeys', translationKeys)
     core.setOutput('translations', translations)
   } catch (error) {
-    // core.setFailed(error.message)
-    console.log(error)
+    core.setFailed(error)
   }
 }
 

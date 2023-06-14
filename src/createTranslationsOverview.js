@@ -4,16 +4,14 @@ const fsPromises = fs.promises
 const { Minhash, LshIndex } = require('minhash')
 const levenshteinDistance = require('./levensteinDistance.js')
 const core = require('@actions/core')
-
-// Console colors used
-const Reset = '\x1b[0m'
-const FgRed = '\x1b[31m'
-const FgGreen = '\x1b[32m'
-const FgYellow = '\x1b[33m'
-const FgMagenta = '\x1b[35m'
-
-// How far in are we tabbing our output
-const baseTabs = '\t'
+const {
+  Reset,
+  FgRed,
+  FgGreen,
+  FgYellow,
+  FgMagenta,
+  baseTabs,
+} = require('./consoleConsts')
 
 let log = () => console.log(...arguments)
 
@@ -80,7 +78,7 @@ function getAllFiles(fileEndings, folders) {
 
 function* findTranslations(data, regex, fileName, ignoreFile) {
   for (const match of data.toString().matchAll(regex)) {
-    const key = match?.groups?.translation.replace('\\', '')
+    const key = match?.groups?.translation
 
     // Could be improved by checking locality as well as index
     if (ignoreFile?.[`${fileName}:${match.index}`]) continue
@@ -283,7 +281,7 @@ function createRegexes(env) {
       translationFunctions.map(
         (str) =>
           new RegExp(
-            `${str.replace(
+            `${str.replaceAll(
               '$',
               '\\$'
             )}\\(\\n?\\s*[${hyph}](?<translation>([^${hyph}])+)[${hyph}]([,.\\n\\s]+)?[\\)\\{\\[]`,
