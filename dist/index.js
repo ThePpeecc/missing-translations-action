@@ -3465,6 +3465,10 @@ async function run() {
 
     if (missingTranslations.length > 0) {
       core.setFailed('Found some translations missing')
+    } else {
+      core.info(
+        `${baseTabs}${FgGreen} No missing translations found 🥳 good job!!`
+      )
     }
 
     core.setOutput('missingTranslations', missingTranslations)

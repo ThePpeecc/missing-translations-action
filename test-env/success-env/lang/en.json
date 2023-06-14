@@ -1,0 +1,9 @@
+{
+    "A simple translation needed here": "A simple translation needed here",
+    "Unsued translation": "Unused translation",
+    "An empty translation": "With a filled translation",
+    "Ups, I spelled this key correctly.": "Ups, I misspelled this key.",
+    "\nmultiline translation here": "multiline translation here",
+    "Here we will add a :variable": "and modify the location :variable in the translation",
+    "We forgot to add this translation to our json file": "Actually we did not forget as this was added later"
+}
