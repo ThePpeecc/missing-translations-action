@@ -28,7 +28,8 @@ function createIgnoreFile(ignoreTrans, ignoreTranslationFile) {
 
 module.exports.createIgnoreFile = function (
   env,
-  missingTranslations
+  missingTranslations,
+  translations
 ) {
   if (env.createIgnore) {
     log('Creating and saving ignore file')
@@ -297,7 +298,7 @@ module.exports.createTranslationsOverview = async function (
   env,
   logFunc
 ) {
-  if (!!logFunc) log = logFunc // Set the logging function, default is just console.log
+  if (logFunc) log = logFunc // Set the logging function, default is just console.log
   const {
     fileEndings,
     folders,
