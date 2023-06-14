@@ -1,4 +1,4 @@
-name: "units-test"
+name: 'units-test'
 on:
   pull_request:
   push:
@@ -11,26 +11,26 @@ jobs:
   units:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - run: npm ci
-    - run: npm test
+      - uses: actions/checkout@v3
+      - run: npm ci
+      - run: npm test
 
   # test action works running from the graph
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: ./
-      with:
-        hyphen: |
+      - uses: actions/checkout@v3
+      - uses: ./
+        with:
+          hyphen: |
             '
             "
             `
-        fileEndings: |
-          js
-        translationFile: 'test-env/lang/en.json'
-        translationFunctions: |
-          $t
-        folders: |
-          test-env
-        findSimilarStrs: true
+          fileEndings: |
+            js
+          translationFile: 'test-env/success-env/lang/en.json'
+          translationFunctions: |
+            $t
+          folders: |
+            test-env/success-env
+          findSimilarStrs: true

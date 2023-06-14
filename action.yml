@@ -1,43 +1,40 @@
 name: 'Missing Translations'
 description: 'Find missing translation keys '
 inputs:
-  fileEndings: 
-      description: 'Which file types to search for use of translation functions in.'
-      required: true
-      default: |
-        js
-        ts
-        vue
+  fileEndings:
+    description: 'Which file types to search for use of translation functions in.'
+    required: true
+    default: |
+      js
+      ts
   translationFile:
-      description: 'Path to json file with key - value for translations'
-      required: true
-      default: './lang/en.json'
+    description: 'Path to json file with key - value for translations'
+    required: true
+    default: './lang/en.json'
   translationFunctions:
-      description: 'The identifier name of the translation functions used'
-      required: true
-      default: |
-        $t
-        $tc
-        @lang
-        __
+    description: 'The identifier name of the translation functions used'
+    required: true
+    default: |
+      $t
+      $tc
   folders:
-      description: 'Path to folders, to search for missing translations in'
-      default: |
-        ./src/ 
+    description: 'Path to folders, to search for missing translations in'
+    default: |
+      ./src/
   hyphen:
-      description: 'What hyphens are used to identify a string'
-      default: |
-        "
-        '
+    description: 'What hyphens are used to identify a string'
+    default: |
+      "
+      '
   findSimilarStrs:
-      description: 'Try to search for similar keys to missing translations. Practical to find small spelling mistakes. Can be quite slow if there is a large translation file.'
-      default: false
+    description: 'Try to search for similar keys to missing translations. Practical to find small spelling mistakes. Can be quite slow if there is a large translation file.'
+    default: false
   similarDist:
-      description: 'The max distance of changes need to be made for finding spelling mistakes. The higher the number the longer the CI tool will take.'
-      default: 1
+    description: 'The max distance of changes need to be made for finding spelling mistakes. The higher the number the longer the CI tool will take.'
+    default: 1
   createIgnore:
-      description: 'Create or update the ignore file with newly found missing translations.'
-      default: false
+    description: 'Create or update the ignore file with newly found missing translations.'
+    default: false
 outputs:
   missingTranslations:
     description: 'Array of found keys missing a translation'
@@ -45,8 +42,10 @@ outputs:
     description: 'Array of found keys found in the translation file, that are not used in any file'
   uniqueTranslations:
     description: 'Array of unique keys found in files'
-  translations:
+  translationKeys:
     description: 'Array of keys from the translation file'
+  translations:
+    description: 'Array of missing translations with their file path, line and column location'
 runs:
   using: 'node16'
   main: 'dist/index.js'
