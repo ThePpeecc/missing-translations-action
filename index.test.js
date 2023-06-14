@@ -1,7 +1,7 @@
-const process = require('process');
-const cp = require('child_process');
-const path = require('path');
-
+const process = require('process')
+const cp = require('child_process')
+const path = require('path')
+const { expect, test } = require('@jest/globals')
 
 const fileEndings = 'INPUT_FILEENDINGS'
 const translationFunctions = 'INPUT_TRANSLATIONFUNCTIONS'
@@ -23,12 +23,21 @@ test('test runs', () => {
     test-env
   `
 
-
   const ip = path.join(__dirname, 'index.js')
   try {
-    const result = cp.execSync(`node ${ip}`, {env: process.env}).toString()
-    console.log(result)
-  } catch(e) {
-    console.error(e)
+    cp.execSync(`node ${ip}`, { env: process.env }).toString()
+
+    // Our setup in test-env should cause the action to fail, this should catch such issues.
+    expect(true).toBe(false)
+  } catch (e) {
+    const output = e.stdout.toString('utf8')
+
+    // Basic tests to check for
+    expect(output.includes('Missing translation for:')).toBeTruthy()
+    expect(output.includes('This key does exist in ')).toBeTruthy()
+    expect(output.includes('Found in:')).toBeTruthy()
+    expect(output.includes('test-env/src/main.js:23:20')).toBeTruthy()
+
+    console.log(output)
   }
 })
