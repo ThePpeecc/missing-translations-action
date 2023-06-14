@@ -1,7 +1,6 @@
-const process = require('process');
-const cp = require('child_process');
-const path = require('path');
-
+const process = require('process')
+const cp = require('child_process')
+const path = require('path')
 
 const fileEndings = 'INPUT_FILEENDINGS'
 const translationFunctions = 'INPUT_TRANSLATIONFUNCTIONS'
@@ -23,12 +22,13 @@ test('test runs', () => {
     test-env
   `
 
-
   const ip = path.join(__dirname, 'index.js')
   try {
-    const result = cp.execSync(`node ${ip}`, {env: process.env}).toString()
+    const result = cp
+      .execSync(`node ${ip}`, { env: process.env })
+      .toString()
     console.log(result)
-  } catch(e) {
+  } catch (e) {
     console.error(e)
   }
 })
